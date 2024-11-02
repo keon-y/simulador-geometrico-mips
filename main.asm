@@ -39,12 +39,17 @@ main:
 	
 			read_number_loop: #ler os bytes e transformar em um inteiro
 				lb $s6, 0($s3) #carrega o prox byte em s6
-				addi $s3, $s3, 1 #avanca s5				
+				addi $s3, $s3, 1 #avanca s5
+
+				#ignorar se for \0
+				#addi $t0, $zero, 0x00          # \0
+				#beq $s6, $t0, read_number_loop # ignorar \0				
 				
 				# o sistema windows usa \r\n para newlines.
 				addi $t0, $zero, 0x0D # \r
-				beq $s6, $t0, call_polygon_function #se for \r, \n ou EOF o poligono atual acabou
-				
+				beq $s6, $t0, read_number_loop # se for \r, pular iteracao
+							       # pq ele vai vir seguido de um \n
+			
 				addi $t0, $zero, 0x0A # \n para portabilizar caso nao for windows (nao testei)
 				beq $s6, $t0, call_polygon_function
 				
@@ -90,6 +95,8 @@ main:
 	# ----------------------
 	read_line_end:
 
+	lb $s6, 0($s3) #carrega o prox byte em s6
+
 	addi $v0, $zero, 10
 	syscall
 
@@ -111,7 +118,7 @@ draw_polygon: # (int *a0, size_t a1, char a2)
 	add $s0, $zero, $zero    # contador do array
 	add $s1, $zero, $a0      # inicio do array
 	add $s2, $zero, $a1      # tamanho do array
-	add $s3, $zero, $a2      # caracter '\r', '\n' ou ' ' (para saber se o codigo deve acabar ou continuar)
+	add $s3, $zero, $a2      # caracter '\n' ou '\0' (para saber se o codigo deve acabar ou continuar)
 
 	polygon_loop:
 		beq $s0, $s2, polygon_loop_end  # condicao de parada (contador == tamanho)
@@ -139,9 +146,6 @@ draw_polygon: # (int *a0, size_t a1, char a2)
 
 	addi $t1, $zero, 0x0A               # caracter ascii de \n
 	beq $t0, $t1, read_line_loop        #ainda nao acabou, continuar
-
-	addi $t1, $zero, 0x0D               # caracter ascii de \r
-	beq $t0, $t1, read_line_loop        #ainda nao acabou, continuar 
 
 	j read_line_end                     #eh uma flag de finalizacao, acabou
 
